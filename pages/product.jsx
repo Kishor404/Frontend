@@ -35,7 +35,7 @@ export default function Product() {
 
   const fetchBids = async () => {
     try {
-      const response = await fetch('http://192.168.132.222:8000/api/bids/');
+      const response = await fetch('http://192.168.32.222:8000/api/bids/');
       const data = await response.json();
       setBids(data); // Update Bids state
     } catch (error) {
@@ -45,7 +45,7 @@ export default function Product() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('http://192.168.132.222:8000/api/products/');
+      const response = await fetch('http://192.168.32.222:8000/api/products/');
       const data = await response.json();
       setProducts(data); // Update Products state
     } catch (error) {
@@ -64,6 +64,7 @@ export default function Product() {
           pro_lis.push({
             ...products[j],
             current_bid: Bids[i].current_bid,
+            bid_id: Bids[i].id,
           });
         }
       }

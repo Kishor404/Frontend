@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';  
+import { LoginStatus } from '../globals';
+
+
 
 export default function Bid({ route, navigation }) {
   const { product } = route.params; // Product details passed from product.jsx
   const [bidAmount, setBidAmount] = useState('');
+
 
   const handleBidSubmit = async () => {
     if (!bidAmount || isNaN(bidAmount) || parseFloat(bidAmount) <= product.current_bid) {
@@ -12,20 +17,19 @@ export default function Bid({ route, navigation }) {
     }
 
     try {
-      const response = await fetch('http://192.168.132.222:8000/api/bids/', {
-        method: 'POST',
+      const response = await fetch('http://192.168.32.222:8000/api/bids/'+product.bid_id+'/', {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          product_id: product.id,
-          bid_amount: parseFloat(bidAmount),
+          current_bid:bidAmount,
+          bidder_id:LoginStatus.Data.id
         }),
       });
 
       if (response.ok) {
         Alert.alert('Success', 'Your bid has been placed!');
-        navigation.goBack(); // Navigate back to Product screen
       } else {
         Alert.alert('Error', 'Failed to place the bid. Please try again.');
       }
@@ -38,6 +42,11 @@ export default function Bid({ route, navigation }) {
   return (
     <View style={styles.container}>
         <View style={styles.header}>
+            <TouchableOpacity style={styles.refreshButton} onPress={() => navigation.goBack()}>
+              <View style={styles.backbutt}>
+                <Icon name="arrow-back-outline" size={25} color="#000" />
+              </View>
+            </TouchableOpacity>
             <Text style={styles.titletext}>Bidding Place</Text>
         </View>
       <Text style={styles.title}>{product.name.toUpperCase()}</Text>
@@ -69,11 +78,20 @@ const styles = StyleSheet.create({
   },
   header:{
     width:'100%',
-    height:20,
-    backgroundColor:'red',
+    backgroundColor:'#fff',
+    marginTop:20,
+    flexDirection:'row',
+    height:70,
+    justifyContent:'start',
+    alignItems:'center'
+  },
+  backbutt:{
+    width:50,
+    color:'black',
   },
   titletext:{
     color:'black',
+    fontSize:20,
   },
   title: {
     fontSize: 24,
