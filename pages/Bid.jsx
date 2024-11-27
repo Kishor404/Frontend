@@ -8,7 +8,29 @@ import { LoginStatus } from '../globals';
 export default function Bid({ route, navigation }) {
   const { product } = route.params; // Product details passed from product.jsx
   const [bidAmount, setBidAmount] = useState('');
-
+  const [sellerDet, setSellerDet] = useState('');
+  const [bidderDet, setBidderDet] = useState('');
+  
+  const fetchSeller = async () => {
+    try {
+      const response = await fetch('http://192.168.32.222:8000/api/getoneuser/'+product.seller_id+'/');
+      const data = await response.json();
+      setSellerDet(data);
+    } catch (error) {
+      console.error('Error fetching Bids:', error);
+    }
+  };
+  const fetchBidder = async () => {
+    try {
+      const response = await fetch('http://192.168.32.222:8000/api/getoneuser/'+product.bidder_id+'/');
+      const data = await response.json();
+      setBidderDet(data);
+    } catch (error) {
+      console.error('Error fetching Bids:', error);
+    }
+  };
+  fetchSeller();
+  fetchBidder();
 
   const handleBidSubmit = async () => {
     if (!bidAmount || isNaN(bidAmount) || parseFloat(bidAmount) <= product.current_bid) {
@@ -27,9 +49,11 @@ export default function Bid({ route, navigation }) {
           bidder_id:LoginStatus.Data.id
         }),
       });
+      setBidAmount('');
 
       if (response.ok) {
         Alert.alert('Success', 'Your bid has been placed!');
+        navigation.goBack();
       } else {
         Alert.alert('Error', 'Failed to place the bid. Please try again.');
       }
@@ -50,10 +74,12 @@ export default function Bid({ route, navigation }) {
             <Text style={styles.titletext}>Bidding Place</Text>
         </View>
       <Text style={styles.title}>{product.name.toUpperCase()}</Text>
-      <Text style={styles.detail}>Current Bid: {product.current_bid} INR</Text>
+      <Text style={styles.bidprice}>Current Bid: {product.current_bid} INR</Text>
       <Text style={styles.detail}>Details: {product.details}</Text>
       <Text style={styles.detail}>Quality: {product.quality} / 10</Text>
       <Text style={styles.detail}>Quantity: {product.quantity} KG</Text>
+      <Text style={styles.detail}>Seller: {sellerDet.name}</Text>
+      <Text style={styles.detail}>Current Bidder: {bidderDet.name}</Text>
 
       <TextInput
         style={styles.input}
@@ -102,6 +128,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 10,
     color: '#555',
+  },
+  bidprice: {
+    fontSize: 20,
+    marginBottom: 10,
+    color: 'green',
   },
   input: {
     borderWidth: 1,

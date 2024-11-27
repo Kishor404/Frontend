@@ -65,6 +65,8 @@ export default function Product() {
             ...products[j],
             current_bid: Bids[i].current_bid,
             bid_id: Bids[i].id,
+            bidder_id:Bids[i].bidder_id,
+            seller_id:Bids[i].seller_id,
           });
         }
       }
