@@ -1,12 +1,17 @@
 import React from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native'; 
+import { LoginStatus } from '../globals'; // Assuming LoginStatus is exported from '../globals'
 
 export default function Home() {
-    const navigation = useNavigation();
-    const navigateToProduct = () => {
-        navigation.navigate('Product'); // Navigating to Product screen
-      };
+  const navigation = useNavigation();
+
+  const navigateToProduct = () => {
+    navigation.navigate('Product'); // Navigating to Product screen
+  };
+
+  console.log(LoginStatus);
+
   return (
     <View style={styles.container}>
       {/* Logo */}
@@ -20,20 +25,42 @@ export default function Home() {
         <Text style={styles.bannerText}>Welcome to Our App!</Text>
       </View>
 
-      {/* Two Square Buttons */}
+      {/* Products */}
       <View style={styles.buttonRow}>
         <TouchableOpacity style={styles.squareButton} onPress={navigateToProduct}>
           <Text style={styles.buttonText}>Products</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.squareButton}>
-          <Text style={styles.buttonText}>Button 2</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.squareButton}>
+            <Text style={styles.buttonText}>Button 2</Text>
+          </TouchableOpacity>
       </View>
+      {LoginStatus.Data.role === 'seller' && (
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.squareButton} onPress={()=>navigation.navigate('MyOrder')}>
+          <Text style={styles.buttonText}>My Order</Text>
+        </TouchableOpacity>
+        
+          <TouchableOpacity style={styles.squareButton} onPress={()=>navigation.navigate('Map')}>
+            <Text style={styles.buttonText}>Tracking</Text>
+          </TouchableOpacity>
+      </View>)}
+      {LoginStatus.Data.role === 'seller' && (
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.squareButton} onPress={()=>navigation.navigate('PreOrder')}>
+          <Text style={styles.buttonText}>Pre Order</Text>
+        </TouchableOpacity>
+        
+          <TouchableOpacity style={styles.squareButton} onPress={()=>navigation.navigate('Map')}>
+            <Text style={styles.buttonText}>Tracking</Text>
+          </TouchableOpacity>
+      </View>)}
 
       {/* Track Me Button */}
-      <TouchableOpacity style={styles.singleButton}>
+      {LoginStatus.Data.role === 'customer' && (
+      <TouchableOpacity style={styles.singleButton} onPress={() => navigation.navigate('TrackMe')}>
         <Text style={styles.singleButtonText}>Track Me</Text>
       </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -46,8 +73,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 100,
-    height: 100, 
+    width: 300,
+    height: 200, 
     marginTop: 20,
     marginBottom: 20,
   },

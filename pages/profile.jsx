@@ -16,7 +16,8 @@ export default function Profile() {
       <Text style={styles.title}>Profile</Text>
 
       <View style={styles.profileDetails}>
-        <Text style={styles.profileText}><Text style={styles.label}>Name:</Text> {profileData.user}</Text>
+        <Text style={styles.profileText}><Text style={styles.label}>Name:</Text> {profileData.name
+        }</Text>
         <Text style={styles.profileText}><Text style={styles.label}>Phone:</Text> {profileData.phone}</Text>
       </View>
 

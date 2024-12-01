@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
-import { setLoginStatus, LoginStatus } from '../globals';
-
+import { LoginStatus,setLoginStatus } from '../globals';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [id, setId] = useState(0);
 
   const validateInputs = () => {
-    // Common validations
     if (!phone || phone.length !== 10 || !/^\d{10}$/.test(phone)) {
       Alert.alert('Invalid Phone Number', 'Phone number must be 10 digits.');
       return false;
@@ -20,29 +17,67 @@ export default function Login() {
       Alert.alert('Invalid Password', 'Password must be at least 6 characters.');
       return false;
     }
-
-    // Additional validation for signup
     if (!isLogin && (!name || name.trim().length === 0)) {
       Alert.alert('Invalid Name', 'Name cannot be empty.');
       return false;
     }
-
     return true;
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!validateInputs()) return;
 
-    setLoginStatus({ Login: 1, Data: { id: id, user: 'John Doe', phone: phone } });
-    Alert.alert('Login Successful', `Welcome back, ${phone}!`);
-    console.log(LoginStatus);
+    try {
+      const response = await fetch('http://192.168.32.222:8000/api/login/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone, password }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        console.log('Success', data);
+        setLoginStatus({ Login: data.login, Data: data.data });
+        Alert.alert('Login Successful', `Welcome back, ${phone}!`);
+        console.log(LoginStatus);
+      } else {
+        Alert.alert('Error', data.message);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error occurred');
+    }
   };
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     if (!validateInputs()) return;
-
-    Alert.alert('Signup Successful', `Account created for ${name}!`);
+  
+    try {
+      const response = await fetch('http://192.168.32.222:8000/api/signup/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, phone, password }),
+      });
+  
+      const data = await response.json();
+  
+      console.log('Signup Response:', response.status, data);
+  
+      if (response.ok) {
+        Alert.alert('Success', 'Account created successfully! Please log in.');
+        setIsLogin(true);
+      } else {
+        Alert.alert('Error', data[Object.keys(data)[0]] || 'Signup failed');
+      }
+    } catch (error) {
+      console.error('Signup Error:', error);
+      Alert.alert('Error', 'Network error occurred');
+    }
   };
+  
 
   return (
     <View style={styles.container}>
