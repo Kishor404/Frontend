@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import axios from 'axios';
+import apiData from './data.json';
+
 
 const MyOrder = () => {
   const [orderData, setOrderData] = useState(null);
@@ -18,7 +20,7 @@ const MyOrder = () => {
     const fetchData = async () => {
       try {
         // Step 1: Fetch products from the API
-        const productResponse = await axios.get('http://192.168.32.222:8000/api/products/');
+        const productResponse = await axios.get(apiData.api+'/api/products/');
         const products = productResponse.data;
 
         // Step 2: Find the product matching the logged-in user's ID
@@ -28,7 +30,7 @@ const MyOrder = () => {
         // Step 3: If a matching product is found, fetch its device data
         if (userOrder) {
           const deviceResponse = await axios.get(
-            `http://192.168.32.222:8000/api/devices/${userOrder.device_id}/`
+            apiData.api+`/api/devices/${userOrder.device_id}/`
           );
           setDeviceData(deviceResponse.data);
         }

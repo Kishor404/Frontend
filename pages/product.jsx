@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';  // Use this for icons
 import { useNavigation } from '@react-navigation/native';
-
+import apiData from './data.json';
 
 export default function Product() {
 
@@ -10,67 +10,85 @@ export default function Product() {
 
   const [products, setProducts] = useState([]);
   const [Bids, setBids] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [BidList, setBidList] = useState([]);
+  const [shipments, setShipments] = useState([]); // Shipment data
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true); // Reset loading state before fetching data
-    fetchBids();
+    fetchShipments();
     fetchProducts();
+    fetchBids();
 
     const intervalId = setInterval(() => {
-      fetchBids();
+      fetchShipments();
       fetchProducts();
+      fetchBids();
     }, 5000); // Fetch data every 5 seconds
 
     return () => clearInterval(intervalId); // Cleanup interval on unmount
-  }, []); // Empty dependency array to run once when component mounts
+  }, []);
 
   useEffect(() => {
-    // Only run this after both Bids and Products are fetched
-    if (Bids.length > 0 && products.length > 0) {
+    // Combine data after fetching
+    if (shipments.length > 0 && products.length > 0 && Bids.length > 0) {
       BidListFunc();
     }
-  }, [Bids, products]); // Runs when Bids or Products state changes
+  }, [shipments, products, Bids]);
 
-  const fetchBids = async () => {
+  const fetchShipments = async () => {
     try {
-      const response = await fetch('http://192.168.32.222:8000/api/bids/');
+      const response = await fetch(apiData.api + '/api/shipment/');
       const data = await response.json();
-      setBids(data); // Update Bids state
+      setShipments(data);
     } catch (error) {
-      console.error('Error fetching Bids:', error);
+      console.error('Error fetching shipments:', error);
     }
   };
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('http://192.168.32.222:8000/api/products/');
+      const response = await fetch(apiData.api + '/api/products/');
       const data = await response.json();
-      setProducts(data); // Update Products state
+      setProducts(data);
     } catch (error) {
       console.error('Error fetching products:', error);
+    }
+  };
+
+  const fetchBids = async () => {
+    try {
+      const response = await fetch(apiData.api + '/api/bids/');
+      const data = await response.json();
+      setBids(data);
+    } catch (error) {
+      console.error('Error fetching Bids:', error);
     } finally {
-      setLoading(false); // Ensure loading is reset after fetching data
+      setLoading(false);
     }
   };
 
   const BidListFunc = () => {
     let pro_lis = [];
-    for (let i = 0; i < Bids.length; i++) {
-      const pro_id = parseInt(Bids[i].product_id);
-      for (let j = 0; j < products.length; j++) {
-        if (products[j].id === pro_id) {
-          pro_lis.push({
-            ...products[j],
-            current_bid: Bids[i].current_bid,
-            bid_id: Bids[i].id,
-            bidder_id:Bids[i].bidder_id,
-            seller_id:Bids[i].seller_id,
-          });
-        }
+
+    // Filter shipments with status 'OB' (On Bidding)
+    const biddingShipments = shipments.filter((shipment) => shipment.status === 'OB');
+
+    for (let shipment of biddingShipments) {
+      const product = products.find((prod) => prod.id === parseInt(shipment.product_id));
+      const bid = Bids.find((b) => b.seller_id === shipment.seller_id); // Match based on shipment's seller_id
+
+      if (product && bid) {
+        pro_lis.push({
+          ...product,
+          current_bid: bid.current_bid,
+          bid_id: bid.id,
+          bidder_id: bid.bidder_id,
+          shipment_status: shipment.status, // Add shipment status
+        });
       }
     }
+
     setBidList(pro_lis);
   };
 
@@ -81,6 +99,9 @@ export default function Product() {
       <Text style={styles.productQuality}>Quality: {item.quality + ' / 10'}</Text>
       <Text style={styles.productQuantity}>Quantity: {item.quantity + ' KG'}</Text>
       <Text style={styles.productBid}>Current Bid: {item.current_bid} INR</Text>
+      <Text style={styles.shipmentStatus}>
+        Shipment Status: {item.shipment_status}
+      </Text>
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Bid', { product: item })}>
         <Text style={styles.buttonText}>Bid Now</Text>
       </TouchableOpacity>
@@ -89,8 +110,9 @@ export default function Product() {
 
   const handleRefresh = () => {
     setLoading(true); // Set loading state when refreshing
-    fetchBids();
+    fetchShipments();
     fetchProducts();
+    fetchBids();
   };
 
   return (
@@ -159,12 +181,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 5,
     fontWeight: 'bold',
-    color: 'green',
+    color: '#08B69D',
+  },
+  shipmentStatus: {
+    fontSize: 14,
+    marginTop: 5,
+    color: '#888',
   },
   button: {
     marginTop: 15,
     padding: 10,
-    backgroundColor: '#007bff',
+    backgroundColor: '#08B69D',
     borderRadius: 5,
     alignItems: 'center',
   },
@@ -176,7 +203,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 85,
     right: 20,
-    backgroundColor: '#007bff',
+    backgroundColor: '#08B69D',
     padding: 10,
     paddingTop: 7,
     borderRadius: 10,

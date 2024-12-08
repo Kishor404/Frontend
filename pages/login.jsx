@@ -1,12 +1,36 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Alert,
+  Animated,
+  Easing,
+  ImageBackground,
+  Image,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { LoginStatus,setLoginStatus } from '../globals';
+import apiData from './data.json';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [fadeAnim] = useState(new Animated.Value(0));
+
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      easing: Easing.ease,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
+
 
   const validateInputs = () => {
     if (!phone || phone.length !== 10 || !/^\d{10}$/.test(phone)) {
@@ -28,7 +52,7 @@ export default function Login() {
     if (!validateInputs()) return;
 
     try {
-      const response = await fetch('http://192.168.32.222:8000/api/login/', {
+      const response = await fetch(apiData.api+'/api/login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,7 +64,7 @@ export default function Login() {
       if (response.ok) {
         console.log('Success', data);
         setLoginStatus({ Login: data.login, Data: data.data });
-        Alert.alert('Login Successful', `Welcome back, ${phone}!`);
+        Alert.alert('Login Successful', `Welcome back, ${data.data.name}!`);
         console.log(LoginStatus);
       } else {
         Alert.alert('Error', data.message);
@@ -54,7 +78,7 @@ export default function Login() {
     if (!validateInputs()) return;
   
     try {
-      const response = await fetch('http://192.168.32.222:8000/api/signup/', {
+      const response = await fetch(apiData.api+'/api/signup/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,76 +104,145 @@ export default function Login() {
   
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{isLogin ? 'Login' : 'Sign Up'}</Text>
 
-      {!isLogin && (
-        <TextInput
-          style={styles.input}
-          placeholder="Name"
-          value={name}
-          onChangeText={setName}
-        />
-      )}
+    <ImageBackground
+      source={require('../assets/back.png')}
+      style={styles.container}
+    >
+      {/* Logo Section */}
+      <View style={styles.logoWrapper}>
+        <Image source={require('../assets/logo.png')} style={styles.logo} />
+      </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Phone"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
+      {/* Login Card */}
+      <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
+        <View style={styles.titleTextBox}>
+          <Text style={styles.titleText}>{isLogin ? 'LogIn' : 'Create A Account'}</Text>
+        </View>
+        {!isLogin && (
+          <>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person" size={20} color="#08B69D" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Name"
+                value={name}
+                onChangeText={setName}
+                placeholderTextColor="#aaa"
+              />
+            </View>
+            {/* Divider */}
+            <View style={styles.divider} />
+          </>
+        )}
+    <View style={styles.inputContainer}>
+          <Ionicons name="call" size={20} color="#08B69D" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Phone"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            placeholderTextColor="#aaa"
+          />
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+        {/* Divider */}
+        <View style={styles.divider} />
 
-      <TouchableOpacity style={styles.button} onPress={isLogin ? handleLogin : handleSignup}>
-        <Text style={styles.buttonText}>{isLogin ? 'Log In' : 'Sign Up'}</Text>
-      </TouchableOpacity>
+        <View style={styles.inputContainer}>
+          <Ionicons name="lock-closed" size={20} color="#08B69D" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholderTextColor="#aaa"
+          />
+        </View>
 
-      <TouchableOpacity onPress={() => setIsLogin(!isLogin)} style={styles.switchButton}>
-        <Text style={styles.switchText}>
-          {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Log In'}
-        </Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity style={styles.button} onPress={isLogin ? handleLogin : handleSignup}>
+          <Text style={styles.buttonText}>{isLogin ? 'Log In' : 'Sign Up'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setIsLogin(!isLogin)} style={styles.switchButton}>
+          <Text style={styles.switchText}>
+            {isLogin
+              ? "Don't have an account? Sign Up"
+              : 'Already have an account? Log In'}
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </ImageBackground>
+
+
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    resizeMode: 'cover',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoWrapper: {
+    position: 'absolute',
+    top: 5,
+    alignItems: 'center',
+  },
+  logo: {
+    width: 130,
+    height: 130,
+    marginBottom: 10,
+    marginTop:5,
+    },
+  card: {
+    marginTop: 350,
+    width: '85%',
+    padding: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    marginVertical:-10,
     alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 20,
+    width: '100%',
+    height: 50,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginBottom: 0,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#eee',
+    marginVertical: 10,
+  },
+  icon: {
+    marginRight: 10,
   },
   input: {
-    width: '100%',
-    height: 50,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 20,
-    paddingHorizontal: 10,
+    flex: 1,
+    fontSize: 16,
+    color: '#08B69D',
   },
   button: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#007bff',
+    width: '70%',
+    height: 40,
+    backgroundColor: '#08B69D',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: 10,
+    marginTop: 15,
   },
   buttonText: {
     color: '#fff',
@@ -157,11 +250,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   switchButton: {
-    marginTop: 15,
+    marginTop: 20,
   },
   switchText: {
-    color: '#007bff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
+    color: '#08B69D',
+    fontSize: 16,
+    fontWeight:'500',
+},
+titleTextBox:{
+    height:60,
+    marginTop:13
+},
+titleText:{
+  fontSize:25
+}
+
 });

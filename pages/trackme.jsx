@@ -1,468 +1,680 @@
 import React, { useState } from 'react';
-import { LoginStatus,setLoginStatus } from '../globals';
-import { View, ScrollView, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  Alert,
+} from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import apiData from './data.json';
+import axios from 'axios';
+import { LoginStatus, setLoginStatus } from '../globals'; 
 
 
 export default function TrackMe() {
-  const navigation = useNavigation();
-
-  const [loading, setLoading] = useState(false);
 
   const [step, setStep] = useState(1);
-  const [productName, setProductName] = useState('');
-  const [productDetails, setProductDetails] = useState('');
-  const [productQuality, setProductQuality] = useState('');
-  const [productQuantity, setProductQuantity] = useState('');
-  const [driverId, setDriverId] = useState('');
-  const [deviceId, setDeviceId] = useState('');
-  const [driverInfo, setDriverInfo] = useState(null);
-  const [userInfo, setUserInfo] = useState(null);
-  const [deviceInfo, setDeviceInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // =========== POST ============
 
-  const postProductDetails = async () => {
-    try {
-      const payload = {
-        name: productName,
-        details: productDetails,
-        quality: parseInt(productQuality),
-        quantity: parseInt(productQuantity),
-        driver_id: driverId,
-        device_id: deviceId,
-        seller_id: LoginStatus.Data.id,
-      };
-  
-      const response = await fetch('http://192.168.32.222:8000/api/products/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-  
-      if (response.ok) {
-        Alert.alert('Success', 'Product details submitted successfully!');
-        navigation.navigate('Home'); // Navigate to Home after successful submission
-      } else {
-        const errorData = await response.json();
-        console.error('Error response:', errorData);
-        Alert.alert('Error', 'Failed to submit product details.');
-      }
-    } catch (error) {
-      console.error('Error posting product details:', error);
-      Alert.alert('Error', 'An error occurred while submitting product details.');
-    }
-  };
+  // ========= PAGE 1 DATA ==========
+  const [productName, setProductName] = useState(null);
+  const [productDetails, setProductDetails] = useState(null);
+  const [productQuantity, setProductQuantity] = useState(null);
 
-  const updateDeviceStatus = async () => {
-    try {
-      const payload = {
-        status: 'set',
-      };
-  
-      const response = await fetch(`http://192.168.32.222:8000/api/devices/${deviceId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-  
-      if (response.ok) {
-        Alert.alert('Success', 'Device status updated successfully!');
-      } else {
-        const errorData = await response.json();
-        console.error('Error response:', errorData);
-        Alert.alert('Error', 'Failed to update device status.');
-      }
-    } catch (error) {
-      console.error('Error updating device status:', error);
-      Alert.alert('Error', 'An error occurred while updating device status.');
-    }
-  };
+  // ========= PAGE 2 DATA ==========
+  const [deviceId, setDeviceId] = useState(null);
+  const [buyerId, setBuyerId] = useState(null);
+  const [driverId, setDriverId] = useState(null);
 
-  const updateDriverStatus = async () => {
-    try {
-      const payload = {
-        status: 'assigned',
-      };
-  
-      const response = await fetch(`http://192.168.32.222:8000/api/drivers/${driverId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-  
-      if (response.ok) {
-        Alert.alert('Success', 'Driver status updated successfully!');
-      } else {
-        const errorData = await response.json();
-        console.error('Error response:', errorData);
-        Alert.alert('Error', 'Failed to update driver status.');
-      }
-    } catch (error) {
-      console.error('Error updating driver status:', error);
-      Alert.alert('Error', 'An error occurred while updating driver status.');
-    }
-  };
-  const updateUserStatus = async () => {
-    try {
-      const payload = {
-        role: 'seller',
-      };
-  
-      const response = await fetch(`http://192.168.32.222:8000/api/users/${LoginStatus.Data.id}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-  
-      if (response.ok) {
-        setLoginStatus((prevStatus) => ({
-          ...prevStatus,
-          Data: {
-            ...prevStatus.Data,
-            role: 'seller',
-          },
-        }));
-        Alert.alert('Success', 'User status updated successfully!');
-      } else {
-        const errorData = await response.json();
-        console.error('Error response:', errorData);
-        Alert.alert('Error', 'Failed to update User status.');
-      }
-    } catch (error) {
-      console.error('Error updating User status:', error);
-      Alert.alert('Error', 'An error occurred while updating User status.');
-    }
-  };
-  
-  
+  // ========= PAGE 3 DATA ==========
+  const [selectedMode, setSelectedMode] = useState('source');
+  const [source, setSource] = useState(null);
+  const [destination, setDestination] = useState(null);
+  const [halts, setHalts] = useState([]);
 
-  // =========== FETCH ============
 
-  const fetchDriverInfo = async (id) => {
-    try {
-      const response = await fetch(`http://192.168.32.222:8000/api/drivers/${id}/`);
-      const driverData = await response.json();
-      const userResponse = await fetch(`http://192.168.32.222:8000/api/getoneuser/${driverData.user_id}/`);
-      const userData = await userResponse.json();
-      setDriverInfo(driverData); // Update state
-      setUserInfo(userData); // Update state
-      return driverData; // Return fetched driver data
-    } catch (error) {
-      console.error('Error fetching driver/user info:', error);
-      Alert.alert('Error', 'Unable to fetch driver/user info');
-      throw error; // Propagate the error to `handleConfirm`
-    }
-  };
-  
-  const fetchDeviceInfo = async (id) => {
-    try {
-      const response = await fetch(`http://192.168.32.222:8000/api/devices/${id}/`);
-      const data = await response.json();
-      setDeviceInfo(data); // Update state
-      return data; // Return fetched device data
-    } catch (error) {
-      console.error('Error fetching device info:', error);
-      Alert.alert('Error', 'Unable to fetch device info');
-      throw error; // Propagate the error to `handleConfirm`
-    }
-  };
-  
+  // ========= DATA ==========
 
-  // ========= PAGE 1 BUTTON ==========
+  const [driverData, setDriverData] = useState(null);
+  const [deviceData, setDeviceData] = useState(null);
+  const [productData, setProductData] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [routeData, setRouteData] = useState(null);
+  const [buyerData, setBuyerData] = useState(null);
+  const [shipmentData, setShipmentData] = useState(null);
 
-  const handleContinue = () => {
-    if (!productName || !productDetails || !productQuality || !productQuantity) {
-      Alert.alert('Error', 'Please fill in all fields');
+
+  // ========== FETCH DRIVER ===============
+
+  const fetchDrivers = async (id) => {
+    if (!id) {
+      console.error('Invalid driver ID');
       return;
     }
-    if (isNaN(productQuality) || isNaN(productQuantity)) {
-      Alert.alert('Error', 'Quality and Quantity should be numbers');
-      return;
-    }
-    if (productQuality < 1 || productQuality > 10) {
-      Alert.alert('Error', 'Product Quality should be between 1 and 10');
-      return;
-    }
-    setStep(2);
-  };
-
-  // ========== PAGE 2 BUTTON ===========
-
-  const handleConfirm = async () => {
-    if (!driverId || !deviceId) {
-      Alert.alert('Error', 'Please fill in Driver ID and Device ID');
-      return;
-    }
-  
-    setLoading(true); // Start loading
-  
     try {
-      // Fetch driver and device info sequentially
-      const driverData = await fetchDriverInfo(driverId);
-      const deviceData = await fetchDeviceInfo(deviceId);
-  
-      // Validate driver and device status
-      if (driverData.status !== 'available') {
-        Alert.alert('Error', 'Driver is not available. Please choose another driver.');
-        setLoading(false); // Stop loading
-        return;
+      const driverResponse = await axios.get(apiData.api + '/api/drivers/' + id);
+      const FetchDriver = driverResponse.data;
+      if(FetchDriver.status==='available'){
+        setDriverData(FetchDriver)
+      }else{
+        alert("The Selected Driver Was Assigned... Choose Other Driver...")
+        setStep(2)
       }
-  
-      if (deviceData.status !== 'stop') {
-        Alert.alert('Error', 'Device is not stopped. Please choose another device.');
-        setLoading(false); // Stop loading
-        return;
-      }
-  
-      // Proceed to next step if all conditions are met
-      setStep(3);
+      
     } catch (error) {
-      console.error('Error during confirmation:', error);
-      Alert.alert('Error', 'An error occurred during confirmation.');
-    } finally {
-      setLoading(false); // Stop loading
+      console.error('Error fetching driver data:', error);
     }
   };
-  
-  
 
-  // ======== PAGE 3 BUTTON =============
+  // ========== FETCH DEVICE ===============
 
-  const handleSubmit = async () => {
-    setLoading(true); // Start loading
-  
+  const fetchDevices = async (id) => {
+    if (!id) {
+      console.error('Invalid device ID');
+      return;
+    }
     try {
-      // Post product details
-      await postProductDetails();
-  
-      // Update device status
-      await updateDeviceStatus();
-  
-      // Update driver status
-      await updateDriverStatus();
-
-      await updateUserStatus();
-  
-      Alert.alert('Success', 'All operations completed successfully!');
-      navigation.navigate('Home'); // Redirect to Home after completion
+      const deviceResponse = await axios.get(apiData.api + '/api/devices/' + id);
+      const FetchDevice = deviceResponse.data;
+      if(FetchDevice.status==='stop'){
+        setDeviceData(FetchDevice)
+      }else{
+        alert("The Selected Device Was Assigned... Choose Other Device...")
+        setStep(2)
+      }
     } catch (error) {
-      console.error('Error during submission:', error);
-      Alert.alert('Error', 'An error occurred during submission.');
-    } finally {
-      setLoading(false); // Stop loading
+      console.error('Error fetching device data:', error);
+    }
+  };
+
+  // ========== POST PRODUCT ===============
+
+  const postProducts = async (productName, productQuantity, productDetails) => {
+    if (!productName || !productQuantity || !productDetails) {
+      console.error('Invalid product data');
+      return;
+    }
+    const productData={"name":productName, "quantity":productQuantity, "details":productDetails}
+    try {
+      const productResponse = await axios.post(apiData.api + '/api/products/', productData);
+      const postProduct = productResponse.data;
+      setProductData(postProduct)
+    } catch (error) {
+      console.error('Error posting product data:', error);
+    }
+  };
+
+  // ========== POST ROUTE ===============
+
+  const postRoute = async (sorce,destination,halts) => {
+    if (!sorce || !destination || !halts) {
+      console.error('Invalid route data');
+      return;
+    }
+    let pHalt=[]
+    for(let i=0;i<halts.length;i++){
+      pHalt.push({"lat":halts[i].latitude.toString(),"lon":halts[i].longitude.toString()})
+    }
+    const routeData={
+      "source":{"lat":source.latitude.toString(),"lon":source.longitude.toString()},
+      "destination":{"lat":destination.latitude.toString(),"lon":destination.longitude.toString()},
+      "halt":{"data":pHalt}, 
+      "current_location" :{"lat":source.latitude.toString(),"lon":source.longitude.toString()}
+    }
+    try {
+      const routeResponse = await axios.post(apiData.api + '/api/routes/', routeData);
+      const postRoute = routeResponse.data;
+      setRouteData(postRoute)
+    } catch (error) {
+      console.error('Error posting route data:', error);
+    }
+  };
+
+  // ========== POST SHIPMENT ===============
+
+  const postShipment = async (productData, userData, driverData, deviceData, buyerData, routeData) => {
+    if (!productName || !productQuantity || !productDetails) {
+      console.error('Invalid product data');
+      return;
+    }
+    const shipmentData={
+      "seller_id": userData.id,
+      "buyer_id": buyerData.id,
+      "product_id": productData.id,
+      "device_id": deviceData.id,
+      "driver_id": driverData.id,
+      "route_id": routeData.id,
+      "status": "SC"
+  }
+    try {
+      const shipmentResponse = await axios.post(apiData.api + '/api/shipment/', shipmentData);
+      const postShipment = shipmentResponse.data;
+      setShipmentData(postShipment)
+    } catch (error) {
+      console.error('Error posting shipment data:', error);
+    }
+  };
+
+  // ========== PATCH USER TO SELLER =============
+
+  const patchUser = async () => {
+    const userData={"role":"seller"}
+    try {
+      const userResponse = await axios.patch(apiData.api + '/api/users/'+LoginStatus.Data.id+"/", userData);
+      const postUser = userResponse.data;
+      setLoginStatus({
+        ...LoginStatus,
+        Data: {
+          ...LoginStatus.Data,
+          role: "seller"
+        }
+      })
+      setUserData(postUser)
+    } catch (error) {
+      console.error('Error patching user data:', error);
+    }
+  };
+
+  // ========== PATCH USER TO BUYER =============
+
+  const patchBuyer = async (id) => {
+    const buyerData={"role":"buyer"}
+    try {
+      const buyerResponse = await axios.patch(apiData.api + '/api/users/'+id+"/", buyerData);
+      const postBuyer = buyerResponse.data;
+      setBuyerData(postBuyer)
+    } catch (error) {
+      console.error('Error patching buyer data:', error);
+    }
+  };
+
+  // ========== PATCH DRIVER =============
+
+  const patchDriver = async (id) => {
+    
+    const driverData={"status":"assigned"}
+    try {
+      const driverResponse = await axios.patch(apiData.api + '/api/drivers/'+id+"/", driverData);
+      const postDriver = driverResponse.data;
+      setDriverData(postDriver)
+    } catch (error) {
+      console.error('Error patching driver data:', error);
+    }
+  };
+
+  // ========== PATCH DEVICE =============
+
+  const patchDevice = async (id) => {
+    
+    const deviceData={"status":"set"}
+    try {
+      const deviceResponse = await axios.patch(apiData.api + '/api/devices/'+id+"/", deviceData);
+      const postDevice = deviceResponse.data;
+      setDeviceData(postDevice)
+    } catch (error) {
+      console.error('Error patching device data:', error);
     }
   };
   
 
+  // ========= MAP ==========
+
+  const handleMapPress = (event) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    if (selectedMode === 'source') {
+      setSource({ latitude, longitude });
+    } else if (selectedMode === 'destination') {
+      setDestination({ latitude, longitude });
+    } else if (selectedMode === 'halt') {
+      setHalts((prevHalts) => [...prevHalts, { latitude, longitude }]);
+    }
+  };
+
+  // ========== STEPS =========
+
+  const renderStepIndicator = () => (
+    <View style={styles.stepIndicator}>
+      {[1, 2, 3, 4, 5].map((item) => (
+        <View key={item} style={[ styles.step, step === item && styles.activeStep,]}>
+          <Text style={styles.stepText}>{item}</Text>
+        </View>
+      ))}
+    </View>
+  );
+
+  // ========== VALIDATION ============
+
+  const valid1=()=>{
+    if(!productName || !productDetails || !productQuantity){
+      alert("Product Details is Missing...")
+      setStep(1)
+    }else if(!driverId){
+      alert("Driver ID is Missing...")
+      setStep(2)
+    }else if(!deviceId){
+      alert("Device ID is Missing...")
+      setStep(2)
+    }else if(!buyerId){
+      alert("Buyer ID is Missing...")
+      setStep(2)
+    }else if(!source || !destination || halts==[]){
+      alert("Route Data is Missing...")
+      setStep(3)
+    }else{
+      FetchOnly();
+    }
+  }
+
+  // ========= FUNCTIONS ===========
+
+  const FetchOnly=async()=>{
+    setLoading(true);
+    if(!driverId || !deviceId || !buyerId){
+      
+      setLoading(false);
+      return ;
+    }else{
+    
+    try {
+      await fetchDrivers(driverId);
+      await fetchDevices(deviceId);
+    } catch (error) {
+      setLoading(false);
+      Alert.alert("Error", "Failed to process the data. Please try again.");
+    }}
+    setLoading(false);
+  }
+
+  const End=async ()=>{
+    setLoading(true);
+    if(!productData || !deviceData || !driverData || !userData || !buyerData || !routeData){
+      
+      setLoading(false);
+      return ;
+    }else{
+      try {
+        await postShipment(productData, userData, driverData, deviceData, buyerData, routeData)
+        alert("Now You Become Seller... Please Login...")
+        setLoginStatus({"Login":0,"Data":{}})
+        
+      } catch (error) {
+        setLoading(false);
+        Alert.alert("Error", "Failed to process the data. Please try again.");
+      }
+    }
+    setLoading(false);
+  }
+
+  const Final=async ()=>{
+    setLoading(true);
+    if(!productName || !productQuantity || !productDetails || !source || !destination || !halts || !driverId || !deviceId || !buyerId){
+      
+      setLoading(false);
+      return ;
+    }else{
+      try {
+        await postProducts(productName, productQuantity, productDetails);
+        await postRoute(source,destination,halts);
+        await patchUser();
+        await patchBuyer(buyerId);
+        await patchDriver(driverId);
+        await patchDevice(deviceId);
+        await End();
+
+      } catch (error) {
+        setLoading(false);
+        Alert.alert("Error", "Failed to process the data. Please try again.");
+      }
+    }
+    setLoading(false);
+  }
+
+  // ========= LOADING ===========
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
-    
     <View style={styles.container}>
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007bff" />
-          <Text style={styles.loadingText}>Loading...</Text>
+
+      {renderStepIndicator()}
+
+      {/* =========== PAGE 2 ========== */}
+
+      {step === 1 && (
+        <View>
+          <TextInput
+            style={styles.input}
+            placeholder="Product Name"
+            value={productName}
+            onChangeText={setProductName}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Product Details"
+            value={productDetails}
+            onChangeText={setProductDetails}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Product Quantity"
+            keyboardType="numeric"
+            value={productQuantity}
+            onChangeText={setProductQuantity}
+            placeholderTextColor="#aaa"
+          />
+          <View style={styles.navigationButtons}>
+            <TouchableOpacity onPress={() => setStep(2)} style={styles.button}>
+              <Text style={styles.buttonText}>Next</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
-      {step === 1 && (
-        <>
-          <Text style={styles.title}>Track Your Item</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Product Name"
-            value={productName}
-            onChangeText={setProductName}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Product Details"
-            value={productDetails}
-            onChangeText={setProductDetails}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Initial Product Quality Out Of 10"
-            value={productQuality}
-            keyboardType="numeric"
-            onChangeText={setProductQuality}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Product Quantity In KG"
-            value={productQuantity}
-            keyboardType="numeric"
-            onChangeText={setProductQuantity}
-          />
-          <TouchableOpacity style={styles.button} onPress={handleContinue}>
-            <Text style={styles.buttonText}>Continue</Text>
-          </TouchableOpacity>
-        </>
-      )}
+      {/* =========== PAGE 2 ========== */}
 
       {step === 2 && (
-        <>
-          <Text style={styles.title}>Driver and Device Details</Text>
+        <View>
           <TextInput
             style={styles.input}
-            placeholder="Enter Driver ID"
-            value={driverId}
-            onChangeText={setDriverId}
+            placeholder="Buyer ID"
+            value={buyerId}
+            onChangeText={setBuyerId}
+            placeholderTextColor="#aaa"
           />
           <TextInput
             style={styles.input}
-            placeholder="Enter Device ID"
+            placeholder="Device ID"
             value={deviceId}
             onChangeText={setDeviceId}
+            placeholderTextColor="#aaa"
           />
-          <TouchableOpacity style={styles.button} onPress={handleConfirm}>
-            <Text style={styles.buttonText}>Confirm</Text>
-          </TouchableOpacity>
-        </>
+          <TextInput
+            style={styles.input}
+            placeholder="Driver ID"
+            value={driverId}
+            onChangeText={setDriverId}
+            placeholderTextColor="#aaa"
+          />
+          <View style={styles.navigationButtons}>
+            <TouchableOpacity onPress={() => setStep(1)} style={styles.button}>
+              <Text style={styles.buttonText}>Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setStep(3)} style={styles.button}>
+              <Text style={styles.buttonText}>Next</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
-      {step === 3 && driverInfo && deviceInfo && userInfo && (
-        <>
-        <Text style={styles.s3title}>Tracking Information</Text>
-        <ScrollView contentContainerStyle={styles.mainBox}>
-          <View style={styles.infoBox}>
-            <Text style={styles.titText}>Product Details</Text>
-            <Text style={styles.infoText}>Name: {productName}</Text>
-            <Text style={styles.infoText}>Details: {productDetails}</Text>
-            <Text style={styles.infoText}>Quality: {productQuality}/10</Text>
-            <Text style={styles.infoText}>Quantity: {productQuantity} KG</Text>
-          </View>
-          
-          <View style={styles.infoBox}>
-            <Text style={styles.titText}>Driver Details</Text>
-            <Text style={styles.infoText}>ID: {driverInfo.id}</Text>
-            <Text style={styles.infoText}>User ID: {userInfo.id}</Text>
-            <Text style={styles.infoText}>Name: {userInfo.name}</Text>
-            <Text style={styles.infoText}>Contact: {userInfo.phone}</Text>
-            <Text style={styles.infoText}>Experience: {driverInfo.experience} Year</Text>
-            <Text style={styles.infoText}>Licence Number: {driverInfo.license_number}</Text>
-          </View>
+      {/* =========== PAGE 3 ========== */}
 
-          <View style={styles.infoBox}>
-            <Text style={styles.titText}>Device Details</Text>
-            <Text style={styles.infoText}>ID: {deviceInfo.id}</Text>
-            <Text style={styles.infoText}>Name: {deviceInfo.name}</Text>
-            <Text style={styles.infoText}>Status: {deviceInfo.status}</Text>
-            <Text style={styles.infoText}>Maintain Temperature: {deviceInfo.maintain_temperature} C</Text>
-            <Text style={styles.infoText}>Maintain Humidity: {deviceInfo.maintain_humidity}%</Text>
+      {step === 3 && (
+        <View style={{ flex: 1 }}>
+          <View style={styles.mapContainer}>
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: 9.482616, 
+                longitude:  77.514253,
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.0421,
+              }}
+              onPress={handleMapPress}
+            >
+              {source && <Marker coordinate={source} title="Source" pinColor="green" />}
+              {destination && <Marker coordinate={destination} title="Destination" pinColor="red" />}
+              {halts.map((halt, index) => (
+                <Marker
+                  key={index}
+                  coordinate={halt}
+                  title={`Halt ${index + 1}`}
+                  pinColor="blue"
+                />
+              ))}
+            </MapView>
           </View>
-
-          <View style={styles.infoBox}>
-            <Text style={styles.titText}>Seller Details</Text>
-            <Text style={styles.infoText}>ID: {LoginStatus.Data.id}</Text>
-            <Text style={styles.infoText}>Name: {LoginStatus.Data.name}</Text>
-            <Text style={styles.infoText}>Contact: {LoginStatus.Data.phone}</Text>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.button, selectedMode === 'source' && styles.activeButton]}
+              onPress={() => setSelectedMode('source')}
+            >
+              <Text style={styles.buttonText}>Source</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, selectedMode === 'destination' && styles.activeButton]}
+              onPress={() => setSelectedMode('destination')}
+            >
+              <Text style={styles.buttonText}>Destination</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, selectedMode === 'halt' && styles.activeButton]}
+              onPress={() => setSelectedMode('halt')}
+            >
+              <Text style={styles.buttonText}>Add Halt</Text>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-        <TouchableOpacity
-          style={[styles.submitbutton, loading && { opacity: 0.5 }]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>Submit</Text>
-        </TouchableOpacity>
-        </>
+          <ScrollView style={styles.coordinates}>
+            <Text style={styles.coordinatesText}>
+              Source: {source ? `${source.latitude}, ${source.longitude}` : 'Not Selected'}
+            </Text>
+            <Text style={styles.coordinatesText}>
+              Destination: {destination ? `${destination.latitude}, ${destination.longitude}` : 'Not Selected'}
+            </Text>
+            <Text style={styles.coordinatesText}>Halts:</Text>
+            {halts.length > 0 ? (
+              halts.map((halt, index) => (
+                <Text key={index} style={styles.coordinatesText}>
+                  Halt {index + 1}: {halt.latitude}, {halt.longitude}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.coordinatesText}>No Halts Selected</Text>
+            )}
+          </ScrollView>
+          <View style={styles.navigationButtons}>
+            <TouchableOpacity onPress={() => setStep(2)} style={styles.button}>
+              <Text style={styles.buttonText}>Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {setStep(4); valid1();}} style={styles.button}>
+              <Text style={styles.buttonText}>Next</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
+
+      {/* =========== PAGE 4 ========== */}
+      
+      {step === 4 && (
+        <View>
+          <View>
+            <View>
+              <Text>{productName}</Text>
+              <Text>{productDetails}</Text>
+              <Text>{productQuantity}</Text>
+            </View>
+            <View>
+              <Text>Name : {driverData.name}</Text>
+              <Text>ID : {driverData.id}</Text>
+              <Text>User ID : {driverData.user_id}</Text>
+              <Text>Phone : {driverData.phone}</Text>
+              <Text>License Number : {driverData.license_number}</Text>
+              <Text>Experience : {driverData.experience}</Text>
+              <Text>Status : {driverData.status}</Text>
+            </View>
+            <View>
+              <Text>Name : {deviceData.name}</Text>
+              <Text>ID : {deviceData.id}</Text>
+              <Text>Status : {deviceData.status}</Text>
+            </View>
+            <View>
+              <Text>Source : {JSON.stringify(source)}</Text>
+              <Text>Destination : {JSON.stringify(destination)}</Text>
+              <Text>Halts : </Text>
+              {halts.map((item,i)=>{
+                return <Text>{JSON.stringify(item)}</Text>
+              })}
+            </View>
+          </View>
+          <View style={styles.navigationButtons}>
+            <TouchableOpacity onPress={() => setStep(3)} style={styles.button}>
+              <Text style={styles.buttonText}>Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {setStep(5); Final()}} style={styles.button}>
+              <Text style={styles.buttonText}>Confrim</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* =========== PAGE 5 ========== */}
+      
+      {step === 5 && (
+        <View>
+          <View>
+            <View>
+              <Text>{productData.name}</Text>
+              <Text>{productData.details}</Text>
+              <Text>{productData.quantity}</Text>
+            </View>
+            <View>
+              <Text>Name : {driverData.name}</Text>
+              <Text>ID : {driverData.id}</Text>
+              <Text>User ID : {driverData.user_id}</Text>
+              <Text>Phone : {driverData.phone}</Text>
+              <Text>License Number : {driverData.license_number}</Text>
+              <Text>Experience : {driverData.experience}</Text>
+              <Text>Status : {driverData.status}</Text>
+            </View>
+            <View>
+              <Text>Name : {deviceData.name}</Text>
+              <Text>ID : {deviceData.id}</Text>
+              <Text>Status : {deviceData.status}</Text>
+            </View>
+            <View>
+              <Text>Source : {JSON.stringify(source)}</Text>
+              <Text>Destination : {JSON.stringify(destination)}</Text>
+              <Text>Halts : </Text>
+              {halts.map((item,i)=>{
+                return <Text key={i}>{JSON.stringify(item)}</Text>
+              })}
+            </View>
+          </View>
+          <View style={styles.navigationButtons}>
+            <TouchableOpacity onPress={() => setStep(3)} style={styles.button}>
+              <Text style={styles.buttonText}>Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {Final();}} style={styles.button}>
+              <Text style={styles.buttonText}>Confrim</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer:{
+    flex:1,
+    justifyContent:'center',
+    alignItems:'center',
+  },
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: '#F5F5F5',
+    padding: 10,
+    paddingTop:40,
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginVertical: 30,
+  },
+  step: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    marginHorizontal: 5,
   },
-  s3title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 30,
+  activeStep: {
+    backgroundColor: '#08B69D',
   },
-  title: {
-    fontSize: 24,
+  stepText: {
+    color: '#FFF',
     fontWeight: 'bold',
-    marginBottom: 30,
+  },
+  mapContainer: {
+    flex: 1,
+    marginVertical: 15,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
   },
   input: {
-    width: '100%',
-    padding: 15,
+    backgroundColor: '#FFF',
+    borderColor: '#E0E0E0',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    marginBottom: 20,
-    fontSize: 16,
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 5,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginVertical: 10,
   },
   button: {
-    backgroundColor: '#007bff',
+    flex: 1,
+    marginHorizontal: 5,
     padding: 15,
-    borderRadius: 10,
-    width: '100%',
+    backgroundColor: '#08B69D',
+    borderRadius: 8,
     alignItems: 'center',
-  },
-  submitbutton: {
-    backgroundColor: '#007bff',
-    padding: 15,
-    borderRadius: 10,
-    width: '100%',
-    alignItems: 'center',
-    marginTop:20
   },
   buttonText: {
-    color: '#fff',
     fontSize: 16,
+    color: '#FFF',
     fontWeight: 'bold',
   },
-  infoText: {
-    fontSize: 16,
-    marginVertical: 5,
-    textAlign:'center'
+  activeButton: {
+    backgroundColor: '#0056b3',
   },
-  titText:{
-    textAlign:'center',
-    paddingBottom:10,
-    fontSize:18,
-    color:'#007bff'
+  coordinates: {
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    padding: 15,
+    marginVertical: 15,
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    maxHeight: 150,
   },
-  infoBox:{
-    width:'100%',
-    marginTop:30,
-    backgroundColor:'lightgrey',
-    padding:20,
-    borderRadius:10
+  coordinatesText: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 5,
   },
-  mainBox:{
-    width:'100%',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Optional dim background
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#fff',
+  navigationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
   },
 });

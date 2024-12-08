@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';  
 import { LoginStatus } from '../globals';
-
+import apiData from './data.json';
 
 
 export default function Bid({ route, navigation }) {
@@ -12,21 +12,23 @@ export default function Bid({ route, navigation }) {
   const [bidderDet, setBidderDet] = useState('');
   
   const fetchSeller = async () => {
+    
     try {
-      const response = await fetch('http://192.168.32.222:8000/api/getoneuser/'+product.seller_id+'/');
+      const response = await fetch(apiData.api+'/api/getoneuser/'+product.seller_id+'/');
       const data = await response.json();
       setSellerDet(data);
     } catch (error) {
-      console.error('Error fetching Bids:', error);
+      console.log(seller_id)
+      console.error('Error fetching Bids22:', error);
     }
   };
   const fetchBidder = async () => {
     try {
-      const response = await fetch('http://192.168.32.222:8000/api/getoneuser/'+product.bidder_id+'/');
+      const response = await fetch(apiData.api+'/api/getoneuser/'+product.bidder_id+'/');
       const data = await response.json();
       setBidderDet(data);
     } catch (error) {
-      console.error('Error fetching Bids:', error);
+      console.error('Error fetching Bids33:', error);
     }
   };
   fetchSeller();
@@ -39,7 +41,7 @@ export default function Bid({ route, navigation }) {
     }
 
     try {
-      const response = await fetch('http://192.168.32.222:8000/api/bids/'+product.bid_id+'/', {
+      const response = await fetch(apiData.api+'/api/bids/'+product.bid_id+'/', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +134,7 @@ const styles = StyleSheet.create({
   bidprice: {
     fontSize: 20,
     marginBottom: 10,
-    color: 'green',
+    color: '#08B69D',
   },
   input: {
     borderWidth: 1,
@@ -143,7 +145,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#08B69D',
     padding: 15,
     borderRadius: 5,
     alignItems: 'center',

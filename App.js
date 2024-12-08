@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import { View,StyleSheet } from "react-native";
+
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import * as Location from 'expo-location';
+import apiData from './pages/data.json';
 
 import Home from './pages/Home';
 import Profile from './pages/profile.jsx';
@@ -16,6 +19,12 @@ import TrackMe from './pages/trackme.jsx';
 import MapScreen from './pages/Map.jsx';
 import MyOrder from './pages/myorder.jsx';
 import PreOrder from './pages/preorder.jsx';
+import { SellerData, setSellerData } from './sellerdata.js';
+import Driver from './pages/Driver.jsx';
+import CurrentJob from './pages/currentjob.jsx';
+import Shipment from './pages/shipment.jsx';
+
+import axios from 'axios';
 
 const Tab = createBottomTabNavigator();
 const ProductStack = createStackNavigator();
@@ -32,36 +41,84 @@ function ProductStackNavigator() {
 
 function HomeStackNavigator() {
   return (
-    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+    <HomeStack.Navigator screenOptions={{
+      headerShown: false,
+      gestureEnabled: true,
+      cardStyleInterpolator: ({ current, next, layouts }) => {
+        return {
+          cardStyle: {
+            opacity: current.progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 1],
+            }),
+          },
+        };
+      },
+      transitionSpec: {
+        open: { animation: 'timing', config: { duration: 300 } },
+        close: { animation: 'timing', config: { duration: 300 } },
+      },
+    }}>
       <HomeStack.Screen name="Home" component={Home} />
       <HomeStack.Screen name="TrackMe" component={TrackMe} />
       <HomeStack.Screen name="Map" component={MapScreen} />
-      <HomeStack.Screen name="MyOrder" component={MyOrder}/> 
-      <HomeStack.Screen name="PreOrder" component={PreOrder}/> 
+      <HomeStack.Screen name="MyOrder" component={MyOrder} />
+      <HomeStack.Screen name="PreOrder" component={PreOrder} />
+      <HomeStack.Screen name="Driver" component={Driver} />
+      <HomeStack.Screen name="CurrentJob" component={CurrentJob} />
+      <HomeStack.Screen name="Shipment" component={Shipment} />
     </HomeStack.Navigator>
   );
 }
 
 export default function App() {
-
-  // ++++++++++ TESTING AREA +++++++++++++++
-
-
-  // +++++++++++++++++++++++++++++++++++++++
+  const [driverId, setDriverId] = useState('0');
+  const [shipment, setShipment] = useState({});
   const [isLoggedIn, setIsLoggedIn] = useState(LoginStatus.Login);
   const [watcher, setWatcher] = useState(null);
 
+  const fetchDrivers = async () => {
+    try {
+      const driverResponse = await axios.get(`${apiData.api}/api/drivers/`);
+      const drivers = driverResponse.data;
+      const driver = drivers.find(driver => driver.user_id === String(LoginStatus.Data.id));
+      if (driver) {
+        setDriverId(driver.id);
+      }
+    } catch (error) {
+      console.error('Error fetching driver data:', error);
+    }
+  };
+
+  const fetchShipmentInfo = async () => {
+    if (driverId === '0') return;
+    try {
+      const shipmentResponse = await axios.get(`${apiData.api}/api/shipment/`);
+      const shipments = shipmentResponse.data;
+      const driverShipment = shipments.find(shipment => shipment.driver_id === String(driverId));
+      // console.log(shipments)
+      if (driverShipment) {
+        setShipment(driverShipment);
+      }
+    } catch (error) {
+      console.error('Error fetching shipment data:', error);
+    }
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
+      
+      fetchShipmentInfo();
+      fetchDrivers();
       setIsLoggedIn(LoginStatus.Login);
-    }, 100);
+    }, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    // Start location tracking when role is 'driver' and status is 'start'
     const startWatchingLocation = async () => {
-      console.log("Started Tracking...")
+      console.log('Started Tracking...');
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         console.warn('Location permission denied');
@@ -78,9 +135,8 @@ export default function App() {
           const { latitude, longitude } = loc.coords;
           console.log('Updated location:', { latitude, longitude });
 
-          // Post location to the server
           try {
-            const response = await fetch('http://192.168.32.222:8000/api/routes/1/', {
+            const response = await fetch(`${apiData.api}/api/routes/${shipment.route_id}/`, {
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
@@ -92,7 +148,6 @@ export default function App() {
                 },
               }),
             });
-            console.log('Location posted !');
           } catch (error) {
             console.error('Failed to post location:', error);
           }
@@ -101,6 +156,7 @@ export default function App() {
 
       setWatcher(watcherId);
     };
+
     const stopWatchingLocation = () => {
       if (watcher) {
         watcher.remove();
@@ -109,14 +165,20 @@ export default function App() {
       }
     };
 
+    // Fetch driver and shipment info only if logged in
     if (LoginStatus.Data.role === 'driver') {
-      startWatchingLocation();
+      fetchDrivers().then(() => fetchShipmentInfo());
+      if (shipment.status === 'OP') {
+        startWatchingLocation();
+      } else {
+        stopWatchingLocation();
+      }
     } else {
       stopWatchingLocation();
     }
 
     return () => stopWatchingLocation();
-  }, [LoginStatus]);
+  }, [LoginStatus, driverId, shipment]);
 
   if (!isLoggedIn) {
     return <Login />;
@@ -127,12 +189,14 @@ export default function App() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarStyle: { backgroundColor: '#007bff' },
-          tabBarActiveTintColor: '#fff',
-          tabBarInactiveTintColor: '#ccc',
+          tabBarStyle: styles.tabBar,
+          tabBarActiveTintColor: '#ffffff',
+          tabBarInactiveTintColor: '#eeeeee',
+          tabBarLabelStyle: {
+            fontSize: 12, 
+          },
           tabBarIcon: ({ focused, color, size }) => {
             let iconName;
-
             if (route.name === 'Home') {
               iconName = focused ? 'home' : 'home-outline';
             } else if (route.name === 'Product') {
@@ -141,7 +205,10 @@ export default function App() {
               iconName = focused ? 'person' : 'person-outline';
             }
 
-            return <Ionicons name={iconName} size={size} color={color} />;
+            return (
+              <View style={styles.iconContainer}>
+                <Ionicons name={iconName} size={size} color={color} />{focused && <View style={styles.activeIndicator} />}
+              </View>)
           },
         })}
       >
@@ -152,3 +219,30 @@ export default function App() {
     </NavigationContainer>
   );
 }
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: '#08B69D', // White background color for the navigation bar
+    height: 60, // Fixed height
+    borderTopWidth: 0, // No border on top
+    position: 'absolute', // Positioned at the bottom of the screen
+    bottom: 0,
+    left: 0,
+    right: 0,
+    elevation: 5, // Subtle shadow effect for Android
+    shadowColor: '#000', // Shadow for iOS
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+  },
+  iconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    top: -5, // Line appears above the icon, slightly away from it
+    width: 40, // Make the line span the width of the icon
+    height: 3, // Line height
+    backgroundColor: '#ffffff', // Color of the line
+    borderRadius: 2, // Optional: rounded corners for the line
+},
+});
