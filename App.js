@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     elevation: 5, // Subtle shadow effect for Android
     shadowColor: '#000', // Shadow for iOS
     shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowRadius: 5
   },
   iconContainer: {
     position: 'relative',

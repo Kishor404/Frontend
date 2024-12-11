@@ -45,6 +45,13 @@ export default function Home() {
     { text: 'Marketplace', onPress: () => navigation.navigate('Product') ,icon: 'storefront'},
     { text: 'Current Job', onPress: () => navigation.navigate('CurrentJob') ,icon: 'briefcase'},
     { text: 'Tracking', onPress: () => navigation.navigate('Map') ,icon: 'navigate'},
+    { text: 'Shipment', onPress: () => navigation.navigate('Shipment') ,icon: 'cube'},
+
+  ];
+  const buyerButtons = [
+    { text: 'Marketplace', onPress: () => navigation.navigate('Product') ,icon: 'storefront'},
+    { text: 'Tracking', onPress: () => navigation.navigate('Map') ,icon: 'navigate'},
+    { text: 'Shipment', onPress: () => navigation.navigate('Shipment') ,icon: 'cube'},
 
   ];
 
@@ -78,6 +85,11 @@ export default function Home() {
         {/* ========== ONLY FOR SELLER ============= */}
         {LoginStatus.Data.role === 'seller' && (
           <ButtonRow buttons={sellerButtons} />
+        )}
+
+        {/* ========== ONLY FOR BUYER ============= */}
+        {LoginStatus.Data.role === 'buyer' && (
+          <ButtonRow buttons={buyerButtons} />
         )}
 
         {/* ================ ONLY FOR CUSTOMER ============== */}

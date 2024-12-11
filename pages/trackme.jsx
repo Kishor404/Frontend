@@ -216,7 +216,7 @@ export default function TrackMe() {
       const postDevice = deviceResponse.data;
       setDeviceData(postDevice)
     } catch (error) {
-      console.error('Error patching device data:', error);
+      console.log("error")
     }
   };
   
@@ -482,16 +482,17 @@ export default function TrackMe() {
             ) : (
               <Text style={styles.coordinatesText}>No Halts Selected</Text>
             )}
+            
           </ScrollView>
           <View style={styles.navigationButtons}>
-            <TouchableOpacity onPress={() => setStep(2)} style={styles.button}>
-              <Text style={styles.buttonText}>Back</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => {setStep(4); valid1();}} style={styles.button}>
-              <Text style={styles.buttonText}>Next</Text>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={() => setStep(2)} style={styles.button}>
+                <Text style={styles.buttonText}>Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => {setStep(4); valid1();}} style={styles.button}>
+                <Text style={styles.buttonText}>Next</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
       )}
 
       {/* =========== PAGE 4 ========== */}
@@ -505,10 +506,8 @@ export default function TrackMe() {
               <Text>{productQuantity}</Text>
             </View>
             <View>
-              <Text>Name : {driverData.name}</Text>
               <Text>ID : {driverData.id}</Text>
               <Text>User ID : {driverData.user_id}</Text>
-              <Text>Phone : {driverData.phone}</Text>
               <Text>License Number : {driverData.license_number}</Text>
               <Text>Experience : {driverData.experience}</Text>
               <Text>Status : {driverData.status}</Text>
@@ -523,7 +522,7 @@ export default function TrackMe() {
               <Text>Destination : {JSON.stringify(destination)}</Text>
               <Text>Halts : </Text>
               {halts.map((item,i)=>{
-                return <Text>{JSON.stringify(item)}</Text>
+                return <Text key={i}>{JSON.stringify(item)}</Text>
               })}
             </View>
           </View>
@@ -675,6 +674,7 @@ const styles = StyleSheet.create({
   navigationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 10,
+    marginBottom: 80,
   },
 });

@@ -9,6 +9,8 @@ const { width, height } = Dimensions.get('window');
 
 // Replace with your OpenRouteService API key
 const OPENROUTESERVICE_API_KEY = '5b3ce3597851110001cf62487243b358f4c9427986c9ac997c5c079c';
+// Replace with your OpenWeatherMap API key
+const OPENWEATHERMAP_API_KEY = '93bbcc818bb29ee5096c30520e99e127';
 
 const MapScreen = () => {
   const [routeData, setRouteData] = useState(null);
@@ -18,6 +20,7 @@ const MapScreen = () => {
   const [error, setError] = useState(null);
   const [routeId, setRouteId] = useState(null);
   const [remainingDistance, setRemainingDistance] = useState(0);
+  const [weather, setWeather] = useState(null);
 
   const fetchShipments = async () => {
     try {
@@ -79,7 +82,36 @@ const MapScreen = () => {
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch optimal path.');
+      console.log(err);
       setLoading(false);
+    }
+  };
+
+  const fetchWeatherData = async (lat, lon) => {
+    try {
+      const response = await axios.get(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHERMAP_API_KEY}&units=metric`
+      );
+      setWeather(response.data);
+    } catch (err) {
+      console.log('Failed to fetch weather data:', err);
+    }
+  };
+
+  const patchRemainingDistance = async () => {
+    if (remainingDistance <= 0) {
+      console.log('Remaining distance is zero or negative, no need to update');
+      return;
+    }
+
+    try {
+      const response = await axios.patch(`${apiData.api}/api/devices/1/`, {
+        remaining_distance: remainingDistance,
+      });
+
+      console.log('Remaining distance updated successfully:', response.data);
+    } catch (err) {
+      console.log('Error updating remaining distance:', err);
     }
   };
 
@@ -92,61 +124,16 @@ const MapScreen = () => {
   }, [routeId]);
 
   useEffect(() => {
-    if (currentLocation && routeCoordinates.length) {
-      const distances = routeCoordinates.map(coord =>
-        calculateDistance(
-          currentLocation.lat,
-          currentLocation.lon,
-          coord.latitude,
-          coord.longitude
-        )
-      );
-  
-      // Find the closest point in routeCoordinates to currentLocation
-      const closestPointIndex = distances.indexOf(Math.min(...distances));
-  
-      // Calculate traveled distance
-      const traveledDistance = calculateRouteDistance(routeCoordinates.slice(0, closestPointIndex + 1));
-  
-      // Calculate total route distance
-      const totalRouteDistance = calculateRouteDistance(routeCoordinates);
-  
-      // Update remaining distance
-      setRemainingDistance(Math.max(0, totalRouteDistance - traveledDistance));
+    if (currentLocation) {
+      fetchWeatherData(currentLocation.lat, currentLocation.lon);
     }
-  }, [currentLocation, routeCoordinates]);
-  
-
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371e3; // Earth radius in meters
-    const toRadians = deg => (deg * Math.PI) / 180;
-    const dLat = toRadians(lat2 - lat1);
-    const dLon = toRadians(lon2 - lon1);
-
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
-
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  };
-
-  const calculateRouteDistance = coordinates => {
-    return coordinates.reduce((total, curr, index) => {
-      if (index === 0) return total;
-      return total + calculateDistance(
-        coordinates[index - 1].latitude,
-        coordinates[index - 1].longitude,
-        curr.latitude,
-        curr.longitude
-      );
-    }, 0);
-  };
+  }, [currentLocation]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       fetchShipments();
       fetchRouteData();
-      console.log(routeId)
+      patchRemainingDistance();
     }, 5000);
 
     return () => clearInterval(interval);
@@ -173,8 +160,8 @@ const MapScreen = () => {
       <MapView
         style={styles.map}
         initialRegion={{
-          latitude: Number(routeData.source.lat),
-          longitude: Number(routeData.source.lon),
+          latitude: Number(currentLocation.lat),
+          longitude: Number(currentLocation.lon),
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         }}
@@ -203,10 +190,15 @@ const MapScreen = () => {
         />
         <Polyline coordinates={routeCoordinates} strokeColor="blue" strokeWidth={4} />
       </MapView>
-      <View style={styles.distanceContainer}>
+      <View style={styles.infoContainer}>
         <Text style={styles.distanceText}>
-          Remaining Distance: {(remainingDistance.toFixed(2)/1000)} KM
+          Remaining Distance: {(remainingDistance.toFixed(2) / 1000)} KM
         </Text>
+        {weather && (
+          <Text style={styles.weatherText}>
+            Weather: {weather.weather[0].description}, {weather.main.temp}°C
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -231,17 +223,24 @@ const styles = StyleSheet.create({
     color: 'red',
     fontSize: 16,
   },
-  distanceContainer: {
+  infoContainer: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 75,
     left: 10,
     padding: 10,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderRadius: 5,
+    borderLeftWidth: 6,
+    borderColor: "#08B69D",
   },
   distanceText: {
     color: 'white',
     fontSize: 16,
+  },
+  weatherText: {
+    color: 'white',
+    fontSize: 14,
+    marginTop: 5,
   },
 });
 

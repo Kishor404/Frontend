@@ -125,8 +125,9 @@ const CurrentJob = () => {
         ) : (
           <Button
             title="Approve"
+            
             onPress={() => handleApproval(shipmentData.id)}
-            color="#28a745"
+            color="#08B69D"
           />
         )}
       </View>
@@ -138,6 +139,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    paddingTop:50,
     backgroundColor: '#f9f9f9',
   },
   centered: {
@@ -161,6 +163,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
+    borderColor:"#08B69D",
+    borderLeftWidth:10,
   },
   approved: {
     color: '#08B69D',

@@ -98,10 +98,8 @@ export default function Product() {
       <Text style={styles.productDetails}>{item.details}</Text>
       <Text style={styles.productQuality}>Quality: {item.quality + ' / 10'}</Text>
       <Text style={styles.productQuantity}>Quantity: {item.quantity + ' KG'}</Text>
+      <Text style={styles.shipmentStatus}>Shipment Status: {item.shipment_status}</Text>
       <Text style={styles.productBid}>Current Bid: {item.current_bid} INR</Text>
-      <Text style={styles.shipmentStatus}>
-        Shipment Status: {item.shipment_status}
-      </Text>
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Bid', { product: item })}>
         <Text style={styles.buttonText}>Bid Now</Text>
       </TouchableOpacity>
